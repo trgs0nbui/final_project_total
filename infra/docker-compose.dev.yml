@@ -1,0 +1,90 @@
+# infra/docker-compose.dev.yml
+# Môi trường development
+#   docker compose -f infra/docker-compose.dev.yml up --build
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: taskmanager_db_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-taskmanager_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: taskmanager_redis_dev
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../task-management-backend
+      dockerfile: ../infra/backend/Dockerfile.dev
+    container_name: taskmanager_backend_dev
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ../task-management-backend:/app
+    ports:
+      - '8000:8000'
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.dev
+    env_file:
+      - ../task-management-backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery:
+    build:
+      context: ../task-management-backend
+      dockerfile: ../infra/backend/Dockerfile.dev
+    container_name: taskmanager_celery_dev
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - ../task-management-backend:/app
+    environment:
+      - SKIP_MIGRATE=1
+    env_file:
+      - ../task-management-backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../task-management-frontend
+      dockerfile: ../infra/frontend/Dockerfile.dev
+    container_name: taskmanager_frontend_dev
+    restart: unless-stopped
+    volumes:
+      - ../task-management-frontend:/app
+      - /app/node_modules
+    ports:
+      - '5173:5173'
+    env_file:
+      - ../task-management-frontend/.env
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data_dev:

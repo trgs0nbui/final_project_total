@@ -1,0 +1,30 @@
+# ============================================================
+# Infrastructure — Docker / Nginx
+# ============================================================
+
+# ── Secrets & Credentials ────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# SSL certificates & private keys
+nginx/certs/
+nginx/ssl/
+certbot/
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+
+# ── Docker Local Overrides ───────────────────────────────────
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ── Volume Data (nếu mount local) ────────────────────────────
+postgres_data/
+redis_data/
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

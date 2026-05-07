@@ -1,0 +1,28 @@
+# infra/frontend/Dockerfile.prod
+# Build context: ../task-management-frontend
+
+# ============================================================
+# Stage 1: Builder — cài đặt dependencies và build Vite app
+# ============================================================
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+RUN npm run build
+
+# ============================================================
+# Stage 2: Runtime — Nginx phục vụ static files
+# ============================================================
+FROM nginx:1.25-alpine AS runtime
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80

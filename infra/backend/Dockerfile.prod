@@ -1,0 +1,53 @@
+# infra/backend/Dockerfile.prod
+# Build context: ../task-management-backend
+
+# ============================================================
+# Stage 1: Builder — cài đặt dependencies
+# ============================================================
+FROM python:3.12-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/base.txt requirements/prod.txt ./requirements/
+RUN pip install --no-cache-dir --prefix=/install -r requirements/prod.txt
+
+# ============================================================
+# Stage 2: Runtime — image production tối giản
+# ============================================================
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=config.settings.prod
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /install /usr/local
+
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
+COPY --chown=appuser:appgroup . .
+
+RUN mkdir -p /app/staticfiles /app/media \
+    && chown -R appuser:appgroup /app/staticfiles /app/media
+
+COPY --chown=appuser:appgroup docker/scripts/entrypoint.prod.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER appuser
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.sh"]
