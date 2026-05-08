@@ -2,9 +2,13 @@
 
 Ứng dụng quản lý dự án và công việc, xây dựng bằng **Vue 3** + **Vite** + **Element Plus**.
 
+> **Xem thêm:**
+> - 🐳 Hướng dẫn chạy toàn bộ stack bằng Docker → [`infra/README.md`](../infra/README.md)
+> - 🔧 Backend API → [`task-management-backend/README.md`](../task-management-backend/README.md)
+
 ---
 
-## Tech stack
+## Tech Stack
 
 | Thư viện | Phiên bản | Mục đích |
 |---|---|---|
@@ -19,14 +23,13 @@
 
 ---
 
-## Yêu cầu hệ thống
+## Yêu Cầu Hệ Thống
 
 | Công cụ | Phiên bản |
 |---|---|
 | Node.js | `^20.19.0` hoặc `>=22.12.0` |
 | npm | đi kèm Node.js |
 
-Kiểm tra:
 ```bash
 node --version
 npm --version
@@ -34,7 +37,7 @@ npm --version
 
 ---
 
-## Cài đặt và chạy local (không Docker)
+## Cài Đặt và Chạy Local (Không Docker)
 
 ### 1. Cài dependencies
 
@@ -49,14 +52,10 @@ npm install
 cp .env.example .env
 ```
 
-Mở `.env` và điền:
-
 ```dotenv
 # URL của backend Django API
 VITE_API_BASE_URL=http://localhost:8000
 ```
-
-> Nếu backend chạy ở cổng khác, thay đổi giá trị tương ứng.
 
 ### 3. Khởi động dev server
 
@@ -68,57 +67,75 @@ npm run dev
 
 ---
 
-## Chạy với Docker (qua infra)
-
-Frontend được tích hợp vào Docker stack ở thư mục `infra/`. Xem hướng dẫn đầy đủ tại [`infra/README.md`](../infra/README.md).
-
-Tóm tắt nhanh:
+## Chạy Với Docker
 
 ```bash
 # Từ thư mục gốc của project
 docker compose -f infra/docker-compose.dev.yml up --build
 ```
 
-Frontend sẽ chạy tại `http://localhost:5173`.
+Frontend chạy tại `http://localhost:5173`. Xem hướng dẫn đầy đủ tại [`infra/README.md`](../infra/README.md).
 
 ---
 
-## Cấu trúc thư mục `src/`
+## Cấu Trúc Thư Mục `src/`
 
 ```
 src/
-├── assets/              # Static assets (hình ảnh, fonts)
-├── components/          # Reusable components
-│   ├── common/          # Layout, navigation, shared UI
-│   ├── project/         # Components liên quan đến Project
-│   └── task/            # Components liên quan đến Task
+├── assets/                      # Static assets
+├── components/
+│   ├── common/
+│   │   ├── AppSidebar.vue       # Sidebar navigation
+│   │   ├── AppTopbar.vue        # Top bar (search, notifications, user menu)
+│   │   ├── NotificationDropdown.vue  # Bell icon + dropdown preview
+│   │   ├── LoadingSpinner.vue
+│   │   └── SkeletonCard.vue
+│   ├── project/
+│   │   ├── ProjectCard.vue
+│   │   ├── ProjectForm.vue
+│   │   └── MemberSearchDialog.vue
+│   └── task/
+│       ├── KanbanBoard.vue      # Drag & drop kanban
+│       ├── TaskTable.vue        # Table view với filter nâng cao
+│       ├── TaskForm.vue
+│       ├── TaskDetailDrawer.vue
+│       └── TaskCard.vue
+├── composables/
+│   ├── useAuth.js               # Wrapper cho auth store
+│   ├── useProjects.js           # Wrapper cho project store
+│   └── useTasks.js              # Wrapper cho task store
 ├── router/
-│   └── index.js         # Route definitions + navigation guards
+│   └── index.js                 # Routes + navigation guards
 ├── services/
-│   └── apiClient.js     # Axios instance, interceptors, token refresh
+│   └── apiClient.js             # Axios instance, interceptors, token refresh
 ├── stores/
-│   └── auth.js          # Pinia store: auth state, login/register/logout
-├── views/
-│   ├── auth/
-│   │   ├── LoginView.vue
-│   │   ├── RegisterView.vue
-│   │   ├── VerifyEmailView.vue        # Xử lý link xác thực từ email
-│   │   └── PendingVerificationView.vue # Thông báo sau khi đăng ký
-│   ├── DashboardView.vue
-│   ├── ProjectsView.vue
-│   ├── ProjectDetailView.vue
-│   ├── ProjectMembersView.vue
-│   ├── TasksView.vue
-│   ├── TeamView.vue
-│   ├── ProfileView.vue
-│   ├── SettingsView.vue
-│   └── NotFoundView.vue
-└── main.js
+│   ├── auth.js                  # Auth state, login/register/logout
+│   ├── projects.js              # Projects, members, search
+│   ├── tasks.js                 # Tasks, my tasks, stats
+│   └── notifications.js         # Notifications, unread count, polling
+├── utils/
+│   └── errorHandler.js
+└── views/
+    ├── auth/
+    │   ├── LoginView.vue
+    │   ├── RegisterView.vue
+    │   ├── VerifyEmailView.vue          # Xử lý token từ link email
+    │   └── PendingVerificationView.vue  # Hướng dẫn sau đăng ký
+    ├── DashboardView.vue
+    ├── ProjectsView.vue
+    ├── ProjectDetailView.vue            # Kanban + Table view
+    ├── ProjectMembersView.vue
+    ├── TasksView.vue                    # My tasks
+    ├── TeamView.vue
+    ├── NotificationsView.vue            # Trang thông báo đầy đủ
+    ├── ProfileView.vue
+    ├── SettingsView.vue
+    └── NotFoundView.vue
 ```
 
 ---
 
-## Biến môi trường
+## Biến Môi Trường
 
 | Biến | Bắt buộc | Mô tả |
 |---|---|---|
@@ -128,84 +145,151 @@ src/
 
 ---
 
-## Routing và xác thực
+## Routing
 
-Router sử dụng navigation guard `beforeEach` với 2 quy tắc:
+Router dùng navigation guard `beforeEach`:
+- Route có `meta.requiresAuth: true` → redirect `/login` nếu chưa đăng nhập
+- Route `/login` hoặc `/register` → redirect `/dashboard` nếu đã đăng nhập
 
-- Route có `meta.requiresAuth: true` → redirect về `/login` nếu chưa đăng nhập
-- Route `/login` hoặc `/register` → redirect về `/dashboard` nếu đã đăng nhập
-
-### Danh sách routes
+### Danh Sách Routes
 
 | Path | Tên | Auth | Mô tả |
 |---|---|---|---|
-| `/login` | `login` | Không | Đăng nhập |
-| `/register` | `register` | Không | Đăng ký tài khoản |
-| `/verify-email` | `verify-email` | Không | Xử lý token xác thực email |
-| `/verify-email/pending` | `verify-email-pending` | Không | Thông báo chờ xác thực |
+| `/login` | `login` | — | Đăng nhập |
+| `/register` | `register` | — | Đăng ký tài khoản |
+| `/verify-email` | `verify-email` | — | Xử lý token xác thực email |
+| `/verify-email/pending` | `verify-email-pending` | — | Hướng dẫn sau đăng ký |
 | `/dashboard` | `dashboard` | ✅ | Tổng quan |
 | `/projects` | `projects` | ✅ | Danh sách dự án |
-| `/projects/:id` | `project-detail` | ✅ | Chi tiết dự án |
+| `/projects/:id` | `project-detail` | ✅ | Chi tiết dự án (Kanban/Table) |
 | `/projects/:id/members` | `project-members` | ✅ | Quản lý thành viên |
-| `/tasks` | `tasks` | ✅ | Danh sách công việc |
+| `/tasks` | `tasks` | ✅ | Công việc của tôi |
 | `/team` | `team` | ✅ | Quản lý nhóm |
+| `/notifications` | `notifications` | ✅ | Trang thông báo |
 | `/profile` | `profile` | ✅ | Hồ sơ cá nhân |
 | `/settings` | `settings` | ✅ | Cài đặt |
 
 ---
 
-## Luồng xác thực email
+## Pinia Stores
 
-Sau khi đăng ký, người dùng **bắt buộc phải xác thực email** trước khi đăng nhập:
+### `auth.js`
+- State: `user`, `accessToken`, `refreshToken`, `isAuthenticated`
+- Actions: `login`, `register`, `logout`, `fetchProfile`, `updateProfile`, `uploadAvatar`
+- Persist: `localStorage` (key `auth`)
 
-1. Người dùng đăng ký → backend gửi email chứa link `http://<FRONTEND_URL>/verify-email?token=<token>`
-2. Frontend redirect sang `/verify-email/pending` — hiển thị hướng dẫn kiểm tra email
-3. Người dùng click link trong email → `VerifyEmailView` gọi `GET /api/auth/verify-email/?token=...`
-4. Xác thực thành công → hiển thị thông báo và link đăng nhập
-5. Nếu cố đăng nhập khi chưa xác thực → backend trả lỗi, frontend hiển thị thông báo kèm link hướng dẫn
+### `projects.js`
+- State: `projects`, `currentProject`, `pagination`
+- Actions: `fetchProjects`, `fetchProjectById`, `createProject`, `deleteProject`, `fetchMembers`, `addMember`, `removeMember`, `searchUsersToAdd`, `fetchMemberStats`
+- Persist: `sessionStorage` (chỉ `currentProject`)
+
+### `tasks.js`
+- State: `tasks`, `currentTask`, `myTasks`, `myTaskStats`
+- Getters: `tasksByStatus` (dùng cho Kanban)
+- Actions: `fetchTasks`, `createTask`, `updateTask`, `patchTask` (optimistic), `deleteTask`, `fetchMyTasks`, `fetchMyTaskStats`
+
+### `notifications.js`
+- State: `notifications`, `unreadCount`, `pagination`
+- Actions: `fetchNotifications`, `fetchUnreadCount`, `markAsRead`, `markAllAsRead`
+- Polling: `startPolling()` / `stopPolling()` — poll unread count mỗi 60 giây
+
+---
+
+## Hệ Thống Thông Báo
+
+### `NotificationDropdown` (trong AppTopbar)
+- Icon chuông với badge số chưa đọc
+- Dropdown hiển thị 8 thông báo gần nhất
+- Click item → đánh dấu đã đọc + navigate đến project/task
+- Link "Xem tất cả" → `/notifications`
+- Polling tự động mỗi 60 giây khi user đăng nhập
+
+### `NotificationsView` (`/notifications`)
+- 4 tab: Tất cả / Chưa đọc / Công việc / Dự án
+- Group theo ngày: Hôm nay / Hôm qua / N ngày trước
+- Card unread có nền xanh nhạt + dot indicator
+- Nút "Đánh dấu tất cả đã đọc"
+
+### Các loại thông báo
+
+| Loại | Icon | Màu | Mô tả |
+|---|---|---|---|
+| `task_assigned` | List | Xanh dương | Được giao task mới |
+| `task_due_soon` | Warning | Vàng | Task sắp đến hạn (24h) |
+| `project_member_added` | User | Xanh lá | Được thêm vào dự án |
+
+---
+
+## Luồng Xác Thực Email
+
+```
+Đăng ký
+  → POST /api/auth/register/
+  → Backend gửi email: {FRONTEND_URL}/verify-email?token=<token>
+  → Redirect /verify-email/pending (hướng dẫn kiểm tra email)
+
+User click link trong email
+  → /verify-email?token=<token>
+  → GET /api/auth/verify-email/?token=<token>
+  → Thành công → hiện nút "Đăng nhập ngay"
+  → Thất bại → hiện lỗi + link đăng ký lại
+
+Đăng nhập khi chưa xác thực
+  → Backend trả lỗi "Email chưa được xác thực"
+  → Frontend hiện link "Xem hướng dẫn xác thực"
+```
+
+---
+
+## TaskTable — Filter Nâng Cao
+
+Table view hỗ trợ filter kết hợp, gửi params lên backend:
+
+| Filter | UI | Backend param |
+|---|---|---|
+| Tìm kiếm | Text input (debounce 300ms) | `search` |
+| Trạng thái | Dropdown | `status` |
+| Độ ưu tiên | Dropdown | `priority` |
+| Người thực hiện | Dropdown (từ members list) | `assignee` |
+| Hạn từ ngày | Date input | `due_date_from` |
+| Hạn đến ngày | Date input | `due_date_to` |
+
+---
+
+## API Client (`apiClient.js`)
+
+Axios instance với:
+- **Request interceptor:** Tự động gắn `Authorization: Bearer <token>`
+- **Response interceptor:** Xử lý 401 → silent token refresh → retry request
+- **Error normalization:** Chuyển Django REST errors thành `{ status, message, errors }`
+- **Queue:** Các request 401 đồng thời được queue, chờ refresh xong rồi retry cùng lúc
 
 ---
 
 ## Scripts
 
 ```bash
-# Chạy dev server
-npm run dev
-
-# Build production
-npm run build
-
-# Preview bản build production
-npm run preview
-
-# Chạy unit tests (single run)
-npm test
-
-# Chạy unit tests ở watch mode
-npm run test:watch
-
-# Format code với Prettier
-npm run format
+npm run dev          # Dev server
+npm run build        # Build production
+npm run preview      # Preview bản build
+npm test             # Unit tests (single run)
+npm run test:watch   # Unit tests (watch mode)
+npm run format       # Format code với Prettier
 ```
 
 ---
 
-## Build production
+## Build Production
 
 ```bash
 npm run build
-```
+# Output: dist/
 
-Output nằm ở thư mục `dist/`. Đây là static files có thể serve bằng bất kỳ web server nào (Nginx, Apache, CDN).
-
-Khi build cần truyền `VITE_API_BASE_URL` đúng với môi trường production:
-
-```bash
+# Với API URL production
 VITE_API_BASE_URL=https://api.yourdomain.com npm run build
 ```
 
-Hoặc qua Docker build arg (xem `infra/frontend/Dockerfile.prod`):
-
+Qua Docker build arg:
 ```bash
 docker build \
   --build-arg VITE_API_BASE_URL=https://api.yourdomain.com \
@@ -215,33 +299,24 @@ docker build \
 
 ---
 
-## Xử lý sự cố thường gặp
+## Xử Lý Sự Cố
 
-**`npm install` lỗi do Node version không đúng**
-
-Project yêu cầu Node `^20.19.0` hoặc `>=22.12.0`. Dùng [nvm](https://github.com/nvm-sh/nvm) để quản lý version:
-
+**`npm install` lỗi Node version**
 ```bash
-nvm install 22
-nvm use 22
+nvm install 22 && nvm use 22
 ```
 
-**API calls bị lỗi CORS**
+**CORS error khi gọi API**
+- Kiểm tra `VITE_API_BASE_URL=http://localhost:8000`
+- Backend phải có `http://localhost:5173` trong `CORS_ALLOWED_ORIGINS`
 
-Đảm bảo `VITE_API_BASE_URL` trong `.env` trỏ đúng về backend. Backend phải có `http://localhost:5173` trong `CORS_ALLOWED_ORIGINS`.
+**Thông báo không hiện / badge không cập nhật**
+- Kiểm tra Celery Worker đang chạy: `docker compose logs celery`
+- Kiểm tra `notificationStore.startPolling()` được gọi khi mount AppTopbar
+
+**Auth state bị mất sau refresh**
+- Persist qua `pinia-plugin-persistedstate` vào localStorage key `auth`
+- Kiểm tra browser không ở chế độ private/incognito
 
 **Trang trắng sau khi build**
-
-Kiểm tra `base` trong `vite.config.js` có khớp với đường dẫn deploy. Nếu deploy ở subdirectory, thêm:
-
-```js
-// vite.config.js
-export default defineConfig({
-  base: '/your-subpath/',
-  // ...
-})
-```
-
-**Lỗi `localStorage` / auth state bị mất sau refresh**
-
-Auth state được persist qua `pinia-plugin-persistedstate` vào key `auth` trong localStorage. Nếu bị mất, kiểm tra browser không ở chế độ private/incognito hoặc không block localStorage.
+- Kiểm tra `base` trong `vite.config.js` khớp với đường dẫn deploy
