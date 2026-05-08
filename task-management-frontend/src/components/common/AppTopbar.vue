@@ -16,9 +16,8 @@
     <!-- Right actions -->
     <div class="topbar__right">
       <div class="topbar__actions">
-        <button class="topbar__icon-btn" aria-label="Thông báo">
-          <el-icon :size="20"><Bell /></el-icon>
-        </button>
+        <!-- Notification bell với dropdown -->
+        <NotificationDropdown />
         <button class="topbar__icon-btn" aria-label="Trợ giúp">
           <el-icon :size="20"><QuestionFilled /></el-icon>
         </button>
@@ -53,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Search,
@@ -65,9 +64,12 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProjectStore } from '@/stores/projects'
+import { useNotificationStore } from '@/stores/notifications'
+import NotificationDropdown from '@/components/common/NotificationDropdown.vue'
 
 const authStore = useAuthStore()
 const projectStore = useProjectStore()
+const notificationStore = useNotificationStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -77,6 +79,15 @@ const searchQuery = ref('')
 const userInitials = computed(() => {
   const name = authStore.user?.username ?? ''
   return name.slice(0, 2).toUpperCase() || 'U'
+})
+
+// Bắt đầu polling khi topbar mount (user đã đăng nhập)
+onMounted(() => {
+  notificationStore.startPolling()
+})
+
+onBeforeUnmount(() => {
+  notificationStore.stopPolling()
 })
 
 /**
