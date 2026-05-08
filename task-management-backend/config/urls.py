@@ -22,6 +22,13 @@ urlpatterns = [
     # GET /api/tasks/stats/    → stats for tasks assigned to current user
     path("api/tasks/", include((my_task_urlpatterns, "tasks"))),
 
+    # Notifications
+    # GET   /api/notifications/               → danh sách thông báo
+    # GET   /api/notifications/unread-count/  → số thông báo chưa đọc
+    # POST  /api/notifications/mark-all-read/ → đánh dấu tất cả đã đọc
+    # PATCH /api/notifications/<pk>/read/     → đánh dấu một thông báo đã đọc
+    path("api/notifications/", include("apps.notifications.urls")),
+
     # Comments (nested under tasks)
     path(
         "api/projects/<uuid:project_id>/tasks/<uuid:task_id>/comments/",

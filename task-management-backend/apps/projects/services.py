@@ -17,6 +17,7 @@ from .tasks import (
             invalidate_user_projects_cache, 
             invalidate_project_all_cache
         )
+from apps.notifications.tasks import send_project_member_added_notification
 
 logger = logging.getLogger(__name__)
 
@@ -231,6 +232,14 @@ class ProjectService:
         _safe_enqueue(invalidate_project_members_cache, str(project.id))
         _safe_enqueue(invalidate_user_projects_cache, str(user_id))
         _safe_enqueue(invalidate_search_users_cache, str(project.id))
+
+        # Gửi thông báo cho thành viên mới
+        _safe_enqueue(
+            send_project_member_added_notification,
+            str(project.id),
+            str(user.id),
+            str(owner.id),
+        )
 
         return membership
 

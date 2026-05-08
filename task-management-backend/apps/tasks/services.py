@@ -8,9 +8,9 @@ from django.db import transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from .models import Task
-from .repositories import TaskMembershipRepository, TaskRepository,  MyTaskRepository
+from .repositories import TaskMembershipRepository, TaskRepository, MyTaskRepository
 from .tasks import invalidate_project_tasks_cache
-
+from apps.notifications.tasks import send_task_assigned_notification
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,10 @@ class TaskService:
         # Invalidate cache danh sách task của project
         _safe_enqueue(invalidate_project_tasks_cache, str(project.id))
 
+        # Gửi thông báo cho assignee nếu có
+        if task.assignee_id:
+            _safe_enqueue(send_task_assigned_notification, str(task.id), str(creator.id))
+
         return task
 
     @staticmethod
@@ -117,11 +121,19 @@ class TaskService:
                 raise ValidationError("Người được giao việc không phải là thành viên của dự án này.")
 
         project_id = str(task.project_id)
+        # Lưu assignee cũ để so sánh sau khi update
+        old_assignee_id = str(task.assignee_id) if task.assignee_id else None
         task = TaskRepository.update(task, **data)
         logger.info(f"Task updated: id={task.id}, by user_id={user.id}")
 
         # Invalidate cache danh sách task của project
         _safe_enqueue(invalidate_project_tasks_cache, project_id)
+
+        # Gửi thông báo nếu assignee thay đổi sang người mới
+        if 'assignee' in data and task.assignee_id:
+            new_assignee_id = str(task.assignee_id)
+            if new_assignee_id != old_assignee_id:
+                _safe_enqueue(send_task_assigned_notification, str(task.id), str(user.id))
 
         return task
 

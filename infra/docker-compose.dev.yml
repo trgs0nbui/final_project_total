@@ -70,6 +70,25 @@ services:
       redis:
         condition: service_healthy
 
+  celery-beat:
+    build:
+      context: ../task-management-backend
+      dockerfile: ../infra/backend/Dockerfile.dev
+    container_name: taskmanager_celery_beat_dev
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info
+    volumes:
+      - ../task-management-backend:/app
+    environment:
+      - SKIP_MIGRATE=1
+    env_file:
+      - ../task-management-backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: ../task-management-frontend

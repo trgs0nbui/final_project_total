@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'apps.projects',
     'apps.tasks',
     'apps.comments',
+    'apps.notifications',
     
     # cors
     "corsheaders",
@@ -168,6 +169,15 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = 'UTC'
+
+# Celery Beat — periodic tasks
+CELERY_BEAT_SCHEDULE = {
+    # Chạy mỗi giờ: quét task sắp đến hạn trong 24 giờ tới và tạo thông báo
+    'check-due-soon-tasks-every-hour': {
+        'task': 'apps.notifications.tasks.check_due_soon_tasks',
+        'schedule': 3600,  # 3600 giây = 1 giờ
+    },
+}
 
 # =========== EMAIL CONFIG ===========
 # Dùng SMTP Gmail để gửi email xác thực
