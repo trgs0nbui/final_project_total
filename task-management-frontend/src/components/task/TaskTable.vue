@@ -10,10 +10,12 @@
  * Emits:
  *   edit-task   (task)
  *   delete-task (task)
+ *   view-task   (task)
  */
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { Edit, Delete, Search, Filter, MoreFilled } from '@element-plus/icons-vue'
+import { Edit, Delete, Search, Filter, MoreFilled, Calendar } from '@element-plus/icons-vue'
 import { useTaskStore } from '@/stores/tasks'
+import { useProjectStore } from '@/stores/projects'
 
 const props = defineProps({
   tasks: {
@@ -33,12 +35,29 @@ const props = defineProps({
 const emit = defineEmits(['edit-task', 'delete-task', 'view-task'])
 
 const taskStore = useTaskStore()
+const projectStore = useProjectStore()
+
+// ── Members list for assignee filter ─────────────────────────────────────────
+
+const members = ref([])
+
+async function loadMembers() {
+  if (!props.projectId) return
+  try {
+    members.value = await projectStore.fetchMembers(props.projectId)
+  } catch {
+    members.value = []
+  }
+}
 
 // ── Filter state ──────────────────────────────────────────────────────────────
 
 const searchQuery = ref('')
 const filterStatus = ref('')
 const filterPriority = ref('')
+const filterAssignee = ref('')
+const filterDueDateFrom = ref('')
+const filterDueDateTo = ref('')
 
 const STATUS_OPTIONS = [
   { label: 'Tất cả trạng thái', value: '' },
@@ -64,6 +83,9 @@ async function applyFilters() {
   if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
   if (filterStatus.value) params.status = filterStatus.value
   if (filterPriority.value) params.priority = filterPriority.value
+  if (filterAssignee.value) params.assignee = filterAssignee.value
+  if (filterDueDateFrom.value) params.due_date_from = filterDueDateFrom.value
+  if (filterDueDateTo.value) params.due_date_to = filterDueDateTo.value
   await taskStore.fetchTasks(props.projectId, params)
 }
 
@@ -72,7 +94,7 @@ watch(searchQuery, () => {
   debounceTimer = setTimeout(applyFilters, 300)
 })
 
-watch([filterStatus, filterPriority], () => {
+watch([filterStatus, filterPriority, filterAssignee, filterDueDateFrom, filterDueDateTo], () => {
   applyFilters()
 })
 
@@ -80,6 +102,9 @@ function resetFilters() {
   searchQuery.value = ''
   filterStatus.value = ''
   filterPriority.value = ''
+  filterAssignee.value = ''
+  filterDueDateFrom.value = ''
+  filterDueDateTo.value = ''
   applyFilters()
 }
 
@@ -88,6 +113,9 @@ const activeFilterCount = computed(() => {
   if (searchQuery.value.trim()) n++
   if (filterStatus.value) n++
   if (filterPriority.value) n++
+  if (filterAssignee.value) n++
+  if (filterDueDateFrom.value) n++
+  if (filterDueDateTo.value) n++
   return n
 })
 
@@ -204,6 +232,7 @@ const menuStyle = ref({ top: '0px', left: '0px' })
  * @param {MouseEvent} event
  */
 function toggleMenu(id, event) {
+  event.stopPropagation()
   if (activeMenuId.value === id) {
     activeMenuId.value = null
     return
@@ -225,22 +254,41 @@ function toggleMenu(id, event) {
   activeMenuId.value = id
 }
 
-function handleEdit(task) {
-  activeMenuId.value = null
-  emit('edit-task', task)
+/**
+ * Tìm task theo id từ toàn bộ danh sách (không chỉ trang hiện tại).
+ * @param {string} id
+ */
+function findTask(id) {
+  return props.tasks.find((t) => t.id === id)
 }
 
-function handleDelete(task) {
+function handleView(id) {
+  const task = findTask(id)
   activeMenuId.value = null
-  emit('delete-task', task)
+  if (task) emit('view-task', task)
+}
+
+function handleEdit(id) {
+  const task = findTask(id)
+  activeMenuId.value = null
+  if (task) emit('edit-task', task)
+}
+
+function handleDelete(id) {
+  const task = findTask(id)
+  activeMenuId.value = null
+  if (task) emit('delete-task', task)
 }
 
 /** Đóng menu khi click ra ngoài hoặc scroll */
-function closeMenu() {
+function closeMenu(event) {
+  // Không đóng nếu click vào chính menu portal
+  if (event.target?.closest?.('.tt-menu-portal')) return
   activeMenuId.value = null
 }
 
 onMounted(() => {
+  loadMembers()
   document.addEventListener('click', closeMenu, true)
   window.addEventListener('scroll', closeMenu, true)
 })
@@ -292,6 +340,44 @@ onBeforeUnmount(() => {
                 {{ o.label }}
               </option>
             </select>
+
+            <!-- Assignee filter -->
+            <select v-model="filterAssignee" class="tt-select" aria-label="Lọc theo người thực hiện">
+              <option value="">Tất cả người thực hiện</option>
+              <option
+                v-for="m in members"
+                :key="m.user?.id ?? m.id"
+                :value="m.user?.id ?? m.id"
+              >
+                {{ m.user?.full_name || m.user?.username || m.username }}
+              </option>
+            </select>
+
+            <!-- Due date range -->
+            <div class="tt-date-range">
+              <div class="tt-date-field">
+                <el-icon :size="13" class="tt-date-field__icon"><Calendar /></el-icon>
+                <input
+                  v-model="filterDueDateFrom"
+                  type="date"
+                  class="tt-date-input"
+                  aria-label="Hạn từ ngày"
+                  :max="filterDueDateTo || undefined"
+                />
+              </div>
+              <span class="tt-date-range__sep">→</span>
+              <div class="tt-date-field">
+                <el-icon :size="13" class="tt-date-field__icon"><Calendar /></el-icon>
+                <input
+                  v-model="filterDueDateTo"
+                  type="date"
+                  class="tt-date-input"
+                  aria-label="Hạn đến ngày"
+                  :min="filterDueDateFrom || undefined"
+                />
+              </div>
+            </div>
+
             <button v-if="activeFilterCount > 0" class="tt-btn tt-btn--reset" @click="resetFilters">
               Xóa bộ lọc
             </button>
@@ -503,30 +589,21 @@ onBeforeUnmount(() => {
 
   <!-- ── Action menu portal — rendered at body level to escape overflow:hidden ── -->
   <Teleport to="body">
-    <div v-if="activeMenuId !== null" class="tt-menu-portal" :style="menuStyle" @click.stop>
-      <button
-        class="tt-menu__item"
-        @click="
-          emit(
-            'view-task',
-            pagedTasks.find((t) => t.id === activeMenuId),
-          )
-        "
-      >
+    <div
+      v-if="activeMenuId !== null"
+      class="tt-menu-portal"
+      :style="menuStyle"
+      @click.stop
+    >
+      <button class="tt-menu__item" @click="handleView(activeMenuId)">
         <el-icon :size="14"><Search /></el-icon>
         Xem chi tiết
       </button>
-      <button
-        class="tt-menu__item"
-        @click="handleEdit(pagedTasks.find((t) => t.id === activeMenuId))"
-      >
+      <button class="tt-menu__item" @click="handleEdit(activeMenuId)">
         <el-icon :size="14"><Edit /></el-icon>
         Chỉnh sửa
       </button>
-      <button
-        class="tt-menu__item tt-menu__item--danger"
-        @click="handleDelete(pagedTasks.find((t) => t.id === activeMenuId))"
-      >
+      <button class="tt-menu__item tt-menu__item--danger" @click="handleDelete(activeMenuId)">
         <el-icon :size="14"><Delete /></el-icon>
         Xóa
       </button>
@@ -1231,5 +1308,59 @@ onBeforeUnmount(() => {
 
 :global(.tt-menu-portal .tt-menu__item--danger:hover) {
   background: #fff0f0;
+}
+
+/* ── Date range filter ───────────────────────────────────────────────────────── */
+.tt-date-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tt-date-range__sep {
+  font-size: 12px;
+  color: var(--outline);
+  flex-shrink: 0;
+}
+
+.tt-date-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tt-date-field__icon {
+  position: absolute;
+  left: 8px;
+  color: var(--outline);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tt-date-input {
+  padding: 7px 10px 7px 28px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--on-surface);
+  cursor: pointer;
+  outline: none;
+  width: 140px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tt-date-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 74, 198, 0.12);
+}
+
+.tt-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  width: 100%;
+  position: absolute;
+  left: 0;
+  cursor: pointer;
 }
 </style>
