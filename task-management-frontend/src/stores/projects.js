@@ -39,6 +39,7 @@ export const useProjectStore = defineStore(
     /**
      * Fetch all projects from the API.
      * GET /api/projects/
+     * Requests up to 100 projects — sufficient for most workspaces.
      * Updates projects state and pagination.total if API returns a count field.
      */
     async function fetchProjects() {
@@ -46,7 +47,7 @@ export const useProjectStore = defineStore(
       error.value = null
 
       try {
-        const response = await apiClient.get('/api/projects/')
+        const response = await apiClient.get('/api/projects/', { params: { page_size: 100 } })
         const data = response.data
 
         // Support both paginated (DRF default: { count, results }) and plain array responses
@@ -142,6 +143,7 @@ export const useProjectStore = defineStore(
     /**
      * Fetch all members of a project.
      * GET /api/projects/:id/members/
+     * Requests up to 100 members to avoid pagination truncation in dropdowns/tables.
      * @param {string} projectId
      * @returns {Array} memberships array
      */
@@ -149,7 +151,9 @@ export const useProjectStore = defineStore(
       isLoading.value = true
       error.value = null
       try {
-        const response = await apiClient.get(`/api/projects/${projectId}/members/`)
+        const response = await apiClient.get(`/api/projects/${projectId}/members/`, {
+          params: { page_size: 100 },
+        })
         const data = response.data
         return Array.isArray(data) ? data : (data.results ?? [])
       } catch (err) {

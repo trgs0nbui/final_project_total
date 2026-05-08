@@ -38,6 +38,7 @@ export const useTaskStore = defineStore('tasks', () => {
   /**
    * Fetch tasks for a given project, with optional filter/search params.
    * GET /api/projects/:projectId/tasks/?search=&status=&priority=
+   * Requests up to 100 tasks per page — client handles display pagination.
    * @param {string} projectId - Project UUID
    * @param {Object} [params]  - Optional query params: { search, status, priority, assignee, due_date_from, due_date_to }
    */
@@ -46,7 +47,9 @@ export const useTaskStore = defineStore('tasks', () => {
     error.value = null
 
     try {
-      const response = await apiClient.get(`/api/projects/${projectId}/tasks/`, { params })
+      const response = await apiClient.get(`/api/projects/${projectId}/tasks/`, {
+        params: { page_size: 100, ...params },
+      })
       const data = response.data
 
       // Support both paginated (DRF default: { count, results }) and plain array responses
@@ -179,6 +182,7 @@ export const useTaskStore = defineStore('tasks', () => {
   /**
    * Fetch tasks assigned to the current user across all projects.
    * GET /api/tasks/
+   * Requests up to 100 tasks — client handles display pagination.
    * @param {Object} [params] - Optional query params: { status, priority, search }
    */
   async function fetchMyTasks(params = {}) {
@@ -186,7 +190,9 @@ export const useTaskStore = defineStore('tasks', () => {
     error.value = null
 
     try {
-      const response = await apiClient.get('/api/tasks/', { params })
+      const response = await apiClient.get('/api/tasks/', {
+        params: { page_size: 100, ...params },
+      })
       const data = response.data
 
       if (Array.isArray(data)) {

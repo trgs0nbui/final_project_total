@@ -62,7 +62,9 @@ async function fetchMembers() {
   if (!props.projectId) return
   isMembersLoading.value = true
   try {
-    const res = await apiClient.get(`/api/projects/${props.projectId}/members/`)
+    const res = await apiClient.get(`/api/projects/${props.projectId}/members/`, {
+      params: { page_size: 100 },
+    })
     // API trả về paginated { results: [...] } hoặc plain array
     const memberships = Array.isArray(res.data) ? res.data : (res.data.results ?? [])
     memberOptions.value = memberships.map((m) => ({
